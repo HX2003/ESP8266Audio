@@ -54,9 +54,9 @@ AudioOutputI2S::AudioOutputI2S(int port, int output_mode, int dma_buf_count, int
       mode = (i2s_mode_t)(mode | I2S_MODE_PDM);
     }
 
-    i2s_comm_format_t comm_fmt = (i2s_comm_format_t)(I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_MSB);
+    i2s_comm_format_t comm_fmt = (i2s_comm_format_t)(I2S_COMM_FORMAT_STAND_I2S);
     if (output_mode == INTERNAL_DAC) {
-      comm_fmt = (i2s_comm_format_t)I2S_COMM_FORMAT_I2S_MSB;
+      comm_fmt = (i2s_comm_format_t)I2S_COMM_FORMAT_STAND_I2S;
     }
 
     i2s_config_t i2s_config_dac = {
@@ -185,6 +185,7 @@ bool AudioOutputI2S::ConsumeSample(int16_t sample[2])
   }
 #ifdef ESP32
   uint32_t s32;
+  size_t i2s_bytes_write = 0;
   if (output_mode == INTERNAL_DAC) {
     int16_t l = Amplify(ms[LEFTCHANNEL]) + 0x8000;
     int16_t r = Amplify(ms[RIGHTCHANNEL]) + 0x8000;
@@ -192,7 +193,8 @@ bool AudioOutputI2S::ConsumeSample(int16_t sample[2])
   } else {
     s32 = ((Amplify(ms[RIGHTCHANNEL]))<<16) | (Amplify(ms[LEFTCHANNEL]) & 0xffff);
   }
-  return i2s_write_bytes((i2s_port_t)portNo, (const char*)&s32, sizeof(uint32_t), 0);
+  i2s_write((i2s_port_t)portNo, (const char*)&s32, sizeof(uint32_t), &i2s_bytes_write, 0);
+  return i2s_bytes_write;
 #else
   uint32_t s32 = ((Amplify(ms[RIGHTCHANNEL]))<<16) | (Amplify(ms[LEFTCHANNEL]) & 0xffff);
   return i2s_write_sample_nb(s32); // If we can't store it, return false.  OTW true
